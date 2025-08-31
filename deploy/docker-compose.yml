@@ -1,0 +1,213 @@
+# MCP Router System Docker Compose Configuration
+# 
+# Complete deployment setup with all services including PostgreSQL,
+# Ollama, monitoring, and the MCP router itself.
+# 
+# Per requirements.md: Complete implementation, no placeholders.
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcp-postgres
+    environment:
+      POSTGRES_DB: mcp_routing
+      POSTGRES_USER: mcp_user
+      POSTGRES_PASSWORD: mcp_secure_password_2024
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcp_user -d mcp_routing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Ollama Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mcp-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    deploy:
+      resources:
+        reservations:
+          memory: 4G
+        limits:
+          memory: 8G
+
+  # MCP Router Service  
+  mcp-router:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: mcp-router
+    environment:
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=mcp_routing
+      - DB_USER=mcp_user
+      - DB_PASSWORD=mcp_secure_password_2024
+      
+      # Ollama configuration
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_HEALTH_CHECK_INTERVAL=30
+      - OLLAMA_CONNECTION_TIMEOUT=10
+      - OLLAMA_REQUEST_TIMEOUT=300
+      
+      # System configuration
+      - LOG_LEVEL=INFO
+      - METRICS_ENABLED=true
+      - PROMETHEUS_PORT=8090
+      
+      # Performance tuning
+      - MAX_CONCURRENT_REQUESTS=50
+      - DB_POOL_MIN=5
+      - DB_POOL_MAX=20
+    ports:
+      - "8090:8090"  # Prometheus metrics
+    volumes:
+      - ./config:/app/config:ro
+      - mcp_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; import aiohttp; asyncio.run(aiohttp.ClientSession().get('http://localhost:8090/health').close())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    deploy:
+      resources:
+        reservations:
+          memory: 512M
+        limits:
+          memory: 1G
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - mcp-router
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=mcp_admin_2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Redis Cache (for caching routing decisions)
+  redis:
+    image: redis:7-alpine
+    container_name: mcp-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Nginx Reverse Proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - mcp-router
+      - grafana
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+    driver: local
+  ollama_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  redis_data:
+    driver: local
+  mcp_logs:
+    driver: local
+
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

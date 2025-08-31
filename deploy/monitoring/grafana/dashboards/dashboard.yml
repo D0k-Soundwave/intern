@@ -1,0 +1,17 @@
+# Grafana Dashboard Provisioning Configuration
+# 
+# Configures automatic dashboard loading
+# Per requirements.md: Complete implementation, no placeholders.
+
+apiVersion: 1
+
+providers:
+  - name: 'MCP Router Dashboards'
+    orgId: 1
+    folder: 'MCP System'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

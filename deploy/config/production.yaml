@@ -1,0 +1,209 @@
+# MCP Router Production Configuration
+# 
+# Production-ready settings for the complete system
+# Per requirements.md: Complete implementation, no placeholders.
+
+# Database configuration
+database:
+  host: ${DB_HOST:-postgres}
+  port: ${DB_PORT:-5432}
+  name: ${DB_NAME:-mcp_routing}
+  user: ${DB_USER:-mcp_user}
+  password: ${DB_PASSWORD}
+  pool:
+    min_connections: ${DB_POOL_MIN:-5}
+    max_connections: ${DB_POOL_MAX:-20}
+    command_timeout: ${DB_COMMAND_TIMEOUT:-60}
+  ssl_mode: ${DB_SSL_MODE:-prefer}
+  connect_timeout: ${DB_CONNECT_TIMEOUT:-10}
+
+# Ollama configuration
+ollama:
+  base_url: ${OLLAMA_BASE_URL:-http://ollama:11434}
+  health_check_interval: ${OLLAMA_HEALTH_CHECK_INTERVAL:-30}
+  connection_timeout: ${OLLAMA_CONNECTION_TIMEOUT:-10}
+  request_timeout: ${OLLAMA_REQUEST_TIMEOUT:-300}
+  max_retries: ${OLLAMA_MAX_RETRIES:-3}
+  keep_alive_duration: ${OLLAMA_KEEP_ALIVE_DURATION:-3600}
+  
+  # Default models to ensure are available
+  default_models:
+    - llama3.2
+    - llama3.2:7b
+  
+  # Model preferences by category
+  model_preferences:
+    code_generation_simple: llama3.2
+    data_analysis_simple: llama3.2
+    question_answering: llama3.2
+
+# System configuration
+system:
+  environment: production
+  debug: false
+  log_level: ${LOG_LEVEL:-INFO}
+  max_concurrent_requests: ${MAX_CONCURRENT_REQUESTS:-50}
+  request_timeout: ${REQUEST_TIMEOUT:-300}
+  
+  # Performance tuning
+  thread_pool_size: ${THREAD_POOL_SIZE:-4}
+  async_pool_size: ${ASYNC_POOL_SIZE:-10}
+  
+  # File size limits
+  max_file_size_lines: 2000
+  max_line_length: 100
+
+# Monitoring configuration
+monitoring:
+  enabled: ${METRICS_ENABLED:-true}
+  prometheus_port: ${PROMETHEUS_PORT:-8090}
+  health_check_port: ${HEALTH_CHECK_PORT:-8091}
+  
+  # Metrics retention
+  metrics_buffer_size: ${METRICS_BUFFER_SIZE:-10000}
+  metrics_retention_hours: ${METRICS_RETENTION_HOURS:-24}
+  
+  # Alert thresholds
+  alerts:
+    response_time_ms: ${ALERT_RESPONSE_TIME_MS:-5000}
+    error_rate_percent: ${ALERT_ERROR_RATE_PERCENT:-10}
+    memory_usage_percent: ${ALERT_MEMORY_USAGE_PERCENT:-85}
+    disk_usage_percent: ${ALERT_DISK_USAGE_PERCENT:-90}
+
+# Interview system configuration
+interview:
+  # 3% local preference rule
+  ollama_preference_bonus: 0.03
+  
+  # Bias detection thresholds
+  bias_detection_threshold: 0.7
+  max_compensation_factor: 0.15
+  
+  # Performance tracking
+  decision_history_size: 1000
+  performance_stats_enabled: true
+  
+  # Safety overrides
+  safety_overrides:
+    high_accuracy_threshold: 0.8
+    critical_capabilities_threshold: 2
+    
+# Category scanner configuration
+category_scanner:
+  # Confidence thresholds
+  min_confidence_threshold: 0.1
+  high_confidence_threshold: 0.6
+  
+  # Pattern matching
+  enable_fuzzy_matching: true
+  keyword_weight: 0.4
+  intent_weight: 0.3
+  pattern_weight: 0.2
+  context_weight: 0.1
+  
+  # Performance
+  max_suggestions: 10
+  cache_enabled: true
+  cache_ttl_seconds: 300
+
+# Response transformer configuration
+response_transformer:
+  # Quality enhancement
+  grammar_fixes_enabled: true
+  clarity_improvements_enabled: true
+  technical_accuracy_enabled: true
+  completeness_check_enabled: true
+  
+  # Format standardization
+  code_formatting_enabled: true
+  json_formatting_enabled: true
+  list_standardization_enabled: true
+  quote_standardization_enabled: true
+  
+  # Claude style adaptation
+  claude_patterns_enabled: true
+  helpful_context_enabled: true
+  professional_tone_enabled: true
+
+# Security configuration
+security:
+  # Rate limiting
+  enable_rate_limiting: true
+  requests_per_minute: ${RATE_LIMIT_RPM:-60}
+  burst_limit: ${RATE_LIMIT_BURST:-20}
+  
+  # Input validation
+  max_input_length: ${MAX_INPUT_LENGTH:-10000}
+  sanitize_input: true
+  
+  # Output filtering
+  filter_sensitive_data: true
+  redact_patterns:
+    - password
+    - token
+    - secret
+    - key
+    - api_key
+
+# Caching configuration
+cache:
+  enabled: ${CACHE_ENABLED:-true}
+  redis_url: ${REDIS_URL:-redis://redis:6379/0}
+  
+  # Cache TTLs (in seconds)
+  ttl:
+    category_results: 300      # 5 minutes
+    interview_results: 600     # 10 minutes
+    model_capabilities: 3600   # 1 hour
+    health_status: 60          # 1 minute
+  
+  # Cache sizes
+  max_cached_items:
+    categories: 1000
+    interviews: 500
+    responses: 200
+
+# Logging configuration
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: json
+  
+  # File logging
+  file_logging_enabled: true
+  log_file: /app/logs/mcp-router.log
+  max_file_size_mb: 100
+  backup_count: 5
+  
+  # Structured logging fields
+  include_fields:
+    - timestamp
+    - level
+    - message
+    - request_id
+    - user_id
+    - category
+    - model
+    - processing_time
+  
+  # Log sampling for high-frequency events
+  sampling:
+    health_checks: 0.1  # Log only 10% of health checks
+    metrics_updates: 0.05  # Log only 5% of metrics updates
+
+# Development overrides (only in development mode)
+development:
+  debug: true
+  log_level: DEBUG
+  detailed_errors: true
+  mock_external_services: false
+  disable_auth: false
+  enable_test_endpoints: false
+
+# Feature flags
+features:
+  enable_experimental_categories: false
+  enable_advanced_bias_detection: true
+  enable_response_caching: true
+  enable_request_deduplication: true
+  enable_category_learning: false
+  enable_performance_profiling: false

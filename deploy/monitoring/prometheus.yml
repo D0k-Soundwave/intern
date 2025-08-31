@@ -1,0 +1,119 @@
+# Prometheus Configuration for MCP Router System
+# 
+# Configures scraping of all system components and alerting
+# Per requirements.md: Complete implementation, no placeholders.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files for alerting
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # MCP Router Service metrics
+  - job_name: 'mcp-router'
+    static_configs:
+      - targets: ['mcp-router:8090']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'mcp-router'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'mcp_.*'
+        action: keep
+
+  # System metrics from MCP Router
+  - job_name: 'mcp-system'
+    static_configs:
+      - targets: ['mcp-router:8090']
+    scrape_interval: 30s
+    metrics_path: '/system-metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'mcp-system'
+
+  # PostgreSQL metrics (if postgres_exporter is available)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'postgresql'
+
+  # Redis metrics (if redis_exporter is available)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'redis'
+
+  # Ollama service health monitoring
+  - job_name: 'ollama-health'
+    static_configs:
+      - targets: ['ollama:11434']
+    scrape_interval: 60s
+    metrics_path: '/api/tags'
+    scheme: http
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ollama'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up'
+        action: keep
+
+  # Self-monitoring (Prometheus itself)
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+# Storage configuration
+storage:
+  tsdb:
+    retention.time: 30d
+    retention.size: 10GB
+    wal-compression: true
+
+# Remote write configuration (for external storage if needed)
+# remote_write:
+#   - url: "http://external-prometheus:9090/api/v1/write"
+#     queue_config:
+#       max_samples_per_send: 10000
+#       batch_send_deadline: 5s
+
+# Federation configuration (for multi-cluster setups)
+# scrape_configs:
+#   - job_name: 'federate'
+#     scrape_interval: 15s
+#     honor_labels: true
+#     metrics_path: '/federate'
+#     params:
+#       'match[]':
+#         - '{job="mcp-router"}'
+#         - '{job="mcp-system"}'
+#     static_configs:
+#       - targets:
+#         - 'remote-prometheus:9090'

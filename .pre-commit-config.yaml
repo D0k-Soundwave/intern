@@ -1,0 +1,40 @@
+# Pre-commit configuration per requirements.md
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.12.0
+    hooks:
+      - id: black
+        language_version: python3.11
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: ['--max-line-length=100', '--extend-ignore=E203']
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: ['--strict', '--ignore-missing-imports']
+
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.0.3
+    hooks:
+      - id: pylint
+        args: ['--fail-under=8.0']
+
+  # Check for prohibited patterns per requirements.md
+  - repo: local
+    hooks:
+      - id: no-placeholders
+        name: No placeholder code
+        entry: bash -c 'if grep -r "TODO\|FIXME\|mock\|placeholder\|stub" --include="*.py" src/; then echo "ERROR: Placeholder code detected"; exit 1; fi'
+        language: system
+        pass_filenames: false
+
+      - id: check-file-sizes
+        name: Check file sizes (< 2000 lines)
+        entry: python scripts/check_file_sizes.py
+        language: system
+        pass_filenames: false
