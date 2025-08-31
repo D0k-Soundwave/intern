@@ -24,6 +24,7 @@ from ..response.transformer import MCPResponseHandler
 from ..adapters.ollama_client import OllamaClient
 from ..database.connection import DatabaseManager
 from ..monitoring.metrics import MetricsCollector
+from ..analytics.cost_savings import CostSavingsCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class MCPRouterServer:
         self.ollama_client = OllamaClient()
         self.db_manager = DatabaseManager()
         self.metrics = MetricsCollector()
+        self.cost_calculator = CostSavingsCalculator(self.db_manager)
         self._register_tools()
         
         logger.info("MCP Router Server initialized")
@@ -192,6 +194,50 @@ class MCPRouterServer:
                 return json.dumps(stats)
             except Exception as e:
                 logger.error(f"Error in get_routing_stats: {e}")
+                return json.dumps({'error': str(e)})
+
+        @self.server.tool()
+        async def calculate_cost_savings(time_window: str = "24h", report_format: str = "json") -> str:
+            """
+            Calculate cost savings from Ollama routing decisions
+            
+            Args:
+                time_window: Time period to analyze (1h, 24h, 7d, 30d)
+                report_format: Output format (json, markdown)
+            
+            Returns:
+                JSON string with cost savings analysis and ROI metrics
+            """
+            try:
+                if report_format == "full_report":
+                    # Generate comprehensive cost report
+                    report = await self.cost_calculator.generate_cost_report("json")
+                    return report
+                else:
+                    # Get specific time window metrics
+                    savings = await self.cost_calculator.calculate_current_savings(time_window)
+                    roi_data = await self.cost_calculator.calculate_monthly_roi()
+                    
+                    result = {
+                        'time_window': time_window,
+                        'cost_metrics': {
+                            'total_requests': savings.total_requests,
+                            'claude_requests': savings.claude_requests,
+                            'ollama_requests': savings.ollama_requests,
+                            'claude_cost': float(savings.claude_cost),
+                            'ollama_cost': float(savings.ollama_cost),
+                            'total_savings': float(savings.total_savings),
+                            'savings_percentage': savings.savings_percentage,
+                            'avg_cost_per_request': float(savings.avg_cost_per_request)
+                        },
+                        'roi_analysis': roi_data,
+                        'ollama_utilization': savings.ollama_requests / max(savings.total_requests, 1) * 100
+                    }
+                    
+                    return json.dumps(result)
+                    
+            except Exception as e:
+                logger.error(f"Error in calculate_cost_savings: {e}")
                 return json.dumps({'error': str(e)})
 
     async def _execute_ollama(self, input_text: str, category: Dict, context: Dict) -> Dict:

@@ -20,7 +20,7 @@ This is a Claude-Ollama MCP Integration System that routes requests between Clau
 
 ### 1. MCP Router Server (`src/mcp/server.py`)
 - Implements JSON-RPC over stdio communication
-- Registers tools: `analyze_and_route`, `scan_categories`, `check_offloading_capability`
+- Registers tools: `analyze_and_route`, `scan_categories`, `check_offloading_capability`, `calculate_cost_savings`
 - NO direct stdout writes except JSON-RPC responses
 
 ### 2. Category System (76 Categories)
@@ -102,6 +102,7 @@ curl http://localhost:11434/api/tags
 # - routing-engine
 # - response-transformer
 # - ollama-lifecycle
+# - cost-savings-calculator
 ```
 
 ## Key Implementation Rules
