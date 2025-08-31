@@ -1,0 +1,152 @@
+name: Main CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate-compliance:
+    runs-on: ubuntu-latest
+    name: Validate Requirements Compliance
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Check Requirements.md Compliance
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Verify full compliance with Docs/1. requirements.md:
+            1. Check for prohibited patterns (TODO, FIXME, mock, placeholder)
+            2. Verify no stub implementations
+            3. Check file sizes (< 2000 lines)
+            4. Validate comment standards
+            5. Ensure complete implementations
+            
+            Fail the check if any violations found.
+          files: |
+            Docs/1. requirements.md
+            **/*.py
+            **/*.md
+      
+      - name: Validate Complete Integration
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Verify the complete system integration:
+            1. MCP server properly configured
+            2. All 76 categories defined
+            3. Interview system complete
+            4. Response transformation pipeline ready
+            5. Ollama lifecycle management configured
+            
+            Check that all components are connected.
+          files: |
+            Docs/full_plan.md
+            Docs/FINAL_INTEGRATED_PLAN.md
+
+  test-routing-logic:
+    runs-on: ubuntu-latest
+    name: Test Routing Logic
+    needs: validate-compliance
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Test Interview Process
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Test the interview-based routing logic:
+            
+            Test Case 1: Simple request "What is 2+2?"
+            - Should route to Ollama
+            - Complexity score should be low
+            - 3% preference should apply
+            
+            Test Case 2: Complex request "Design a distributed microservices architecture"
+            - Should route to Claude Code
+            - Complexity score should be high
+            
+            Test Case 3: Equal capability scenario
+            - 3% rule should favor Ollama
+            
+            Verify all test cases pass.
+          files: |
+            Docs/6. Interview_Based_Routing_System.md
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Security Analysis
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Perform security analysis:
+            1. Check for hardcoded credentials
+            2. Verify no API keys in code
+            3. Check for SQL injection vulnerabilities
+            4. Verify input validation
+            5. Check for XSS vulnerabilities
+            6. Verify secure communication protocols
+            
+            Report any security issues found.
+          files: |
+            **/*.py
+            **/*.yml
+            **/*.md
+
+  generate-summary:
+    runs-on: ubuntu-latest
+    name: Generate Implementation Summary
+    needs: [validate-compliance, test-routing-logic, security-scan]
+    if: success()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate Summary Report
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate implementation summary:
+            
+            ## System Status
+            - MCP Integration: Ready/Not Ready
+            - Category Classification: Complete/Incomplete
+            - Interview System: Configured/Not Configured
+            - Response Transformation: Ready/Not Ready
+            - Ollama Lifecycle: Configured/Not Configured
+            
+            ## Next Steps
+            - List any missing implementations
+            - Suggest priority order for development
+            - Identify potential issues
+            
+            ## Test Coverage
+            - Components with tests
+            - Components needing tests
+            
+            Create as markdown report.
+          output: implementation-summary.md
+      
+      - name: Upload Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: implementation-summary-${{ github.run_number }}
+          path: implementation-summary.md

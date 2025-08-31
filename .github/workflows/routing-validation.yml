@@ -1,0 +1,115 @@
+name: Routing Framework Validation
+
+on:
+  push:
+    paths:
+      - 'src/routing/**'
+      - 'src/interview/**'
+      - 'Docs/**Router*.md'
+      - 'Docs/**Interview*.md'
+      - '.github/workflows/routing-validation.yml'
+  pull_request:
+    paths:
+      - 'src/routing/**'
+      - 'src/interview/**'
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly validation
+  workflow_dispatch:
+
+jobs:
+  validate-routing-logic:
+    runs-on: ubuntu-latest
+    name: Validate Routing Framework
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Validate Category Coverage
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Validate the routing framework:
+            1. Verify all 76 categories are defined and unique
+            2. Check each category has required fields (name, complexity)
+            3. Validate complexity levels (low, medium, high)
+            4. Ensure no duplicate category IDs or names
+            
+            Report any missing or misconfigured categories.
+          files: |
+            Docs/2.5 AI_Router_Framework.md
+            Docs/full_plan.md
+      
+      - name: Test Interview Logic
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Validate the interview-based routing system:
+            1. Check Requirements Analyzer completeness
+            2. Verify Complexity Scorer logic
+            3. Validate Capability Matcher model profiles
+            4. Test Bias Detector thresholds
+            5. Verify 3% local preference rule implementation
+            
+            Create test scenarios for each component.
+          files: |
+            Docs/6. Interview_Based_Routing_System.md
+            Docs/int. INTERVIEW_WORKFLOW_COMPLETE.md
+            Docs/int. UNIFIED_INTERVIEW_WORKFLOW.md
+          output: interview-test-scenarios.md
+      
+      - name: Validate Response Transformation
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Check Ollama to Claude response transformation:
+            1. Verify ID generation format (msg_...)
+            2. Validate response structure matches Claude format
+            3. Check token calculation logic
+            4. Verify quality assurance checks
+            5. Test error response formatting
+            
+            Ensure responses are indistinguishable from Claude.
+          files: |
+            Docs/8. Ollama_Claude_Response_Integration.md
+            Docs/7. Response_Orchestration_Framework.md
+      
+      - name: Generate Routing Test Suite
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate Python test cases for routing validation:
+            - Test each category routing decision
+            - Verify interview process for sample inputs
+            - Test bias detection and correction
+            - Validate 3% preference rule
+            - Test response transformation
+            
+            Create as pytest-compatible test file.
+          output: tests/test_routing_framework.py
+      
+      - name: Create Validation Report
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate comprehensive validation report including:
+            - Category coverage status
+            - Interview logic validation results
+            - Response transformation checks
+            - Identified issues and recommendations
+            - Test coverage summary
+          output: routing-validation-report.md
+      
+      - name: Upload Validation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: routing-validation-${{ github.run_number }}
+          path: |
+            interview-test-scenarios.md
+            tests/test_routing_framework.py
+            routing-validation-report.md

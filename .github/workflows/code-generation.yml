@@ -1,0 +1,206 @@
+name: Implementation Code Generation
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to generate'
+        required: true
+        type: choice
+        options:
+          - mcp-server
+          - category-scanner
+          - interview-manager
+          - routing-engine
+          - response-transformer
+          - ollama-lifecycle
+          - all
+      language:
+        description: 'Programming language'
+        required: true
+        type: choice
+        default: 'python'
+        options:
+          - python
+          - typescript
+          - go
+  push:
+    paths:
+      - 'Docs/**/*.md'
+    branches:
+      - main
+      - master
+
+jobs:
+  generate-implementation:
+    runs-on: ubuntu-latest
+    name: Generate Implementation Code
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Development Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Generate MCP Server Implementation
+        if: github.event.inputs.component == 'mcp-server' || github.event.inputs.component == 'all'
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate complete MCP server implementation based on documentation:
+            1. Create MCPRouterServer class with stdio transport
+            2. Implement all registered tools (analyze_and_route, scan_categories, etc.)
+            3. Add proper error handling and logging
+            4. Include request deduplication
+            5. Follow requirements.md (no placeholders, complete implementation)
+            
+            Language: ${{ github.event.inputs.language || 'python' }}
+          files: |
+            Docs/4. MCP_requirements.md
+            Docs/7. MCP_Claude_Code_Integration.md
+            Docs/full_plan.md
+            Docs/1. requirements.md
+          output: src/mcp/server.${{ github.event.inputs.language == 'typescript' && 'ts' || github.event.inputs.language == 'go' && 'go' || 'py' }}
+      
+      - name: Generate Category Scanner
+        if: github.event.inputs.component == 'category-scanner' || github.event.inputs.component == 'all'
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate CategoryScanner implementation:
+            1. Implement all 76 categories with proper structure
+            2. Create feature extraction methods
+            3. Add pattern matching for each category
+            4. Implement confidence scoring
+            5. No placeholders - fully functional code only
+            
+            Language: ${{ github.event.inputs.language || 'python' }}
+          files: |
+            Docs/2.5 AI_Router_Framework.md
+            Docs/7. MCP_Claude_Code_Integration.md
+            Docs/1. requirements.md
+          output: src/routing/category_scanner.${{ github.event.inputs.language == 'typescript' && 'ts' || github.event.inputs.language == 'go' && 'go' || 'py' }}
+      
+      - name: Generate Interview Manager
+        if: github.event.inputs.component == 'interview-manager' || github.event.inputs.component == 'all'
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate InterviewProcessManager implementation:
+            1. Implement RequirementsAnalyzer
+            2. Create ComplexityScorer with all factors
+            3. Implement CapabilityMatcher with model profiles
+            4. Add BiasDetector with compensation logic
+            5. Create OffloadingDecisionEngine with 3% rule
+            6. Complete implementation only - no TODOs
+            
+            Language: ${{ github.event.inputs.language || 'python' }}
+          files: |
+            Docs/6. Interview_Based_Routing_System.md
+            Docs/int. UNIFIED_INTERVIEW_WORKFLOW.md
+            Docs/1. requirements.md
+          output: src/interview/process_manager.${{ github.event.inputs.language == 'typescript' && 'ts' || github.event.inputs.language == 'go' && 'go' || 'py' }}
+      
+      - name: Generate Response Transformer
+        if: github.event.inputs.component == 'response-transformer' || github.event.inputs.component == 'all'
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate OllamaResponseTransformer implementation:
+            1. Implement quality assurance checks
+            2. Create Claude-format ID generator
+            3. Add content formatting with code block parsing
+            4. Implement token calculation
+            5. Add response validation
+            6. Full implementation - no stubs
+            
+            Language: ${{ github.event.inputs.language || 'python' }}
+          files: |
+            Docs/8. Ollama_Claude_Response_Integration.md
+            Docs/7. Response_Orchestration_Framework.md
+            Docs/1. requirements.md
+          output: src/response/transformer.${{ github.event.inputs.language == 'typescript' && 'ts' || github.event.inputs.language == 'go' && 'go' || 'py' }}
+      
+      - name: Generate Ollama Lifecycle Manager
+        if: github.event.inputs.component == 'ollama-lifecycle' || github.event.inputs.component == 'all'
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate OllamaLifecycleManager implementation:
+            1. Implement health checking (30s intervals)
+            2. Add auto-start functionality
+            3. Create keep-alive mechanism (1 hour)
+            4. Add model preloading
+            5. Implement graceful shutdown
+            6. Complete working implementation
+            
+            Language: ${{ github.event.inputs.language || 'python' }}
+          files: |
+            Docs/5. OLLAMA_LIFECYCLE_MANAGER.md
+            Docs/6.Ollama_API_Integration_Guide.md
+            Docs/1. requirements.md
+          output: src/adapters/ollama_lifecycle.${{ github.event.inputs.language == 'typescript' && 'ts' || github.event.inputs.language == 'go' && 'go' || 'py' }}
+      
+      - name: Generate Tests
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate comprehensive test suite for generated components:
+            1. Unit tests for each class and method
+            2. Integration tests for component interactions
+            3. Test interview-based routing scenarios
+            4. Test 3% local preference rule
+            5. Test response transformation accuracy
+            6. Mock external dependencies properly
+            
+            Use pytest for Python, jest for TypeScript, or testing package for Go.
+          output: tests/test_generated_${{ github.event.inputs.component }}.${{ github.event.inputs.language == 'typescript' && 'ts' || github.event.inputs.language == 'go' && 'go' || 'py' }}
+      
+      - name: Generate Requirements File
+        if: github.event.inputs.language == 'python' || github.event.inputs.language == null
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Generate requirements.txt with all necessary dependencies:
+            - MCP server requirements
+            - Async libraries (aiohttp, asyncio)
+            - NLP libraries if needed
+            - Testing frameworks
+            - Monitoring tools
+            - Database drivers
+            
+            Include specific versions for reproducibility.
+          output: requirements.txt
+      
+      - name: Create Implementation PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Generated implementation for ${{ github.event.inputs.component }}"
+          title: "Implementation: ${{ github.event.inputs.component }} in ${{ github.event.inputs.language }}"
+          body: |
+            ## Generated Implementation
+            
+            This PR contains auto-generated implementation code for: **${{ github.event.inputs.component }}**
+            
+            ### Generated Files:
+            - Implementation code in `src/` directory
+            - Test suite in `tests/` directory
+            - Updated requirements/dependencies
+            
+            ### Based on Documentation:
+            - MCP Integration specifications
+            - Interview-based routing system
+            - Response transformation pipeline
+            - All requirements from requirements.md
+            
+            Please review the generated code for:
+            - Compliance with requirements.md
+            - No placeholder code
+            - Complete implementation
+            - Proper error handling
+          branch: generated-${{ github.event.inputs.component }}-${{ github.run_number }}
+          delete-branch: true

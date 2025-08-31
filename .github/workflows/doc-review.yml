@@ -1,0 +1,74 @@
+name: Documentation Review
+
+on:
+  pull_request:
+    paths:
+      - 'Docs/**/*.md'
+      - '*.md'
+  push:
+    paths:
+      - 'Docs/**/*.md'
+      - '*.md'
+
+jobs:
+  review-documentation:
+    runs-on: ubuntu-latest
+    name: Review Documentation Changes
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Get previous commit for comparison
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            **/*.md
+      
+      - name: Review Documentation Changes
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Review the documentation changes for:
+            1. Compliance with requirements.md (no placeholders, complete implementation)
+            2. Technical accuracy
+            3. Consistency with system architecture
+            4. Clarity and completeness
+            5. Proper formatting and structure
+            
+            Changed files: ${{ steps.changed-files.outputs.all_changed_files }}
+            
+            Provide specific feedback on any issues found.
+          files: ${{ steps.changed-files.outputs.all_changed_files }}
+      
+      - name: Check Cross-References
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Verify all cross-references between documents:
+            - Check that all referenced files exist
+            - Validate category numbers (1-76)
+            - Ensure consistency in terminology
+            - Verify no broken links in documentation
+          files: |
+            Docs/**/*.md
+      
+      - name: Validate Requirements Compliance
+        uses: anthropics/claude-code-action@main
+        with:
+          task: |
+            Check documentation against Docs/1. requirements.md:
+            - Zero technical debt policy
+            - No placeholder code
+            - Complete implementations
+            - File size limits (< 2000 lines)
+            - Proper comment standards
+            
+            Flag any violations found.
+          files: |
+            Docs/1. requirements.md
+            ${{ steps.changed-files.outputs.all_changed_files }}
